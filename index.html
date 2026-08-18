@@ -107,6 +107,10 @@
     background:var(--panel2);text-align:left;padding:10px 12px;font-size:11px;letter-spacing:1px;
     text-transform:uppercase;color:var(--gold);border-bottom:1px solid var(--border);white-space:nowrap;
   }
+  .th-hint{
+    display:block;margin-top:3px;font-size:9px;font-weight:500;letter-spacing:.3px;
+    text-transform:none;color:var(--muted);white-space:nowrap;
+  }
   tbody td{padding:8px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
   tbody tr:hover{background:rgba(198,162,76,0.04);}
   .player-name-cell{cursor:pointer;font-weight:700;color:var(--cream);}
@@ -428,7 +432,7 @@
           '</div>' +
         '</div>' +
         '<div class="team-avg">Team avg attendance: <span class="' + avgClass + '">' + (avgAtt===null?'&mdash;':avgAtt+'%') + '</span> <span class="muted">(' + sessions + ' session' + (sessions===1?'':'s') + ' logged)</span></div>' +
-        '<div class="table-wrap"><table><thead><tr><th>Athlete</th><th>Attendance</th>' + testHeaders + '<th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+        '<div class="table-wrap"><table><thead><tr><th>Athlete<span class="th-hint">📈 click to see report</span></th><th>Attendance</th>' + testHeaders + '<th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
         '<div class="roster-controls">' +
           '<div class="add-row">' +
             '<input type="text" id="newPlayerName" class="input" placeholder="Athlete name" maxlength="60">' +
