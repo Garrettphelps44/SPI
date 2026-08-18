@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strength & Performance Institute — Team Training Tracker</title>
+<style>
+  :root{
+    --bg:#0C0F12;
+    --panel:#15181C;
+    --panel2:#1C2024;
+    --border:#2A2E33;
+    --gold:#3E82AC;
+    --cream:#F2F1ED;
+    --muted:#9CA3AB;
+    --good:#5FB37A;
+    --warn:#3E82AC;
+    --danger:#B4472E;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--cream);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    min-height:100vh;
+  }
+  #app{max-width:1180px;margin:0 auto;padding:0 20px 60px;}
+
+  /* Header */
+  .pb-header{
+    display:flex;align-items:center;gap:14px;
+    padding:22px 0 18px;
+    border-bottom:1px solid var(--border);
+    margin-bottom:24px;
+  }
+  .pb-wordmark{font-size:17px;font-weight:800;letter-spacing:1.4px;color:var(--cream);}
+  .pb-wordmark.small{font-size:14px;letter-spacing:1.5px;}
+  .pb-sub{font-size:11px;letter-spacing:1.5px;color:var(--gold);font-weight:600;margin-top:2px;}
+
+  /* Layout helpers */
+  .screen-toolbar{
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+    margin-bottom:18px;
+  }
+  .screen-title{
+    font-size:22px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--cream);
+    margin:0;
+  }
+  .toolbar-actions{display:flex;gap:10px;flex-wrap:wrap;}
+  .muted{color:var(--muted);}
+  .small{font-size:12px;}
+
+  /* Buttons */
+  .btn{
+    font-family:inherit;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+    font-size:12px;padding:11px 18px;border-radius:3px;cursor:pointer;border:1px solid var(--border);
+    background:var(--panel2);color:var(--cream);transition:all .12s ease;
+  }
+  .btn:hover{border-color:var(--gold);}
+  .btn-primary{background:var(--gold);color:#0B0B0B;border-color:var(--gold);}
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-outline{background:transparent;border-color:var(--border);color:var(--cream);}
+  .btn-outline:hover{border-color:var(--gold);color:var(--gold);}
+  .btn-icon{
+    background:transparent;border:1px solid var(--border);color:var(--muted);
+    width:28px;height:28px;border-radius:3px;cursor:pointer;font-size:13px;line-height:1;
+  }
+  .btn-icon.danger{color:var(--danger);}
+  .btn-icon.danger:hover{border-color:var(--danger);}
+  .btn-icon.small{width:22px;height:22px;font-size:11px;}
+
+  /* Inputs */
+  .input{
+    font-family:inherit;background:var(--panel2);border:1px solid var(--border);color:var(--cream);
+    padding:10px 12px;border-radius:3px;font-size:14px;
+  }
+  .input:focus{outline:none;border-color:var(--gold);}
+  input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.8) sepia(1) saturate(3) hue-rotate(10deg);cursor:pointer;}
+  .checkbox-label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;}
+
+  /* Team grid */
+  .team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-bottom:20px;}
+  .team-card{
+    background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:18px;
+    cursor:pointer;position:relative;transition:border-color .12s ease;
+  }
+  .team-card:hover{border-color:var(--gold);}
+  .team-card-name{font-weight:800;letter-spacing:1px;text-transform:uppercase;font-size:15px;margin-bottom:10px;padding-right:24px;}
+  .team-card-stats{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;}
+  .team-card .btn-icon{position:absolute;top:14px;right:14px;}
+
+  .add-team-row,.add-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px;}
+  .roster-controls{
+    margin-top:22px;padding-top:18px;border-top:1px solid var(--border);
+    display:flex;flex-direction:column;gap:14px;
+  }
+
+  .empty-state{color:var(--muted);font-size:13px;padding:24px 0;text-align:center;letter-spacing:.5px;}
+
+  /* Roster table */
+  .team-avg{font-size:12px;letter-spacing:1px;text-transform:uppercase;margin-bottom:14px;color:var(--muted);font-weight:700;}
+  .team-avg span.good{color:var(--good);} .team-avg span.warn{color:var(--warn);} .team-avg span.bad{color:var(--danger);}
+  .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:4px;}
+  table{border-collapse:collapse;width:100%;min-width:600px;}
+  thead th{
+    background:var(--panel2);text-align:left;padding:10px 12px;font-size:11px;letter-spacing:1px;
+    text-transform:uppercase;color:var(--gold);border-bottom:1px solid var(--border);white-space:nowrap;
+  }
+  tbody td{padding:8px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
+  tbody tr:hover{background:rgba(198,162,76,0.04);}
+  .player-name-cell{cursor:pointer;font-weight:700;color:var(--cream);}
+  .player-name-cell:hover{color:var(--gold);text-decoration:underline;}
+  .att-cell{font-weight:700;white-space:nowrap;}
+  .att-cell.good{color:var(--good);} .att-cell.warn{color:var(--warn);} .att-cell.bad{color:var(--danger);}
+  .score-input{
+    width:76px;background:transparent;border:1px solid transparent;color:var(--cream);
+    padding:5px 6px;border-radius:3px;font-size:13px;font-family:inherit;
+  }
+  .score-input:hover{border-color:var(--border);}
+  .score-input:focus{outline:none;border-color:var(--gold);background:var(--panel2);}
+  .test-col{min-width:150px;}
+  .test-name-input{
+    background:transparent;border:1px solid transparent;color:var(--gold);font-weight:800;
+    font-size:11px;letter-spacing:1px;text-transform:uppercase;width:100%;padding:2px 4px;font-family:inherit;margin-bottom:4px;
+  }
+  .test-name-input:hover,.test-name-input:focus{border-color:var(--border);outline:none;}
+  .dir-toggle{
+    background:var(--panel2);border:1px solid var(--border);color:var(--muted);font-size:9px;letter-spacing:.5px;
+    padding:3px 6px;border-radius:3px;cursor:pointer;margin-right:4px;font-family:inherit;
+  }
+  .dir-toggle:hover{border-color:var(--gold);color:var(--gold);}
+
+  /* Modal */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;
+    z-index:100;padding:20px;
+  }
+  .modal{
+    background:var(--panel);border:1px solid var(--border);border-radius:5px;width:480px;max-width:92vw;
+    max-height:88vh;display:flex;flex-direction:column;overflow:hidden;
+  }
+  .modal-wide{width:820px;}
+  .modal-header{
+    display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);
+  }
+  .modal-header h3{margin:0;font-size:14px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);}
+  .modal-body{padding:18px 20px;overflow-y:auto;flex:1;}
+  .modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;}
+  .field-label{display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-weight:700;}
+  #attDate,#testDate{margin-bottom:16px;width:100%;}
+
+  .att-list{display:flex;flex-direction:column;gap:6px;}
+  .att-row{
+    display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);
+    border-radius:3px;cursor:pointer;background:var(--panel2);
+  }
+  .att-row.present{border-color:rgba(95,179,122,0.4);}
+  .att-row.absent{border-color:rgba(180,71,46,0.4);opacity:.75;}
+  .status-pill{font-size:10px;font-weight:800;letter-spacing:1px;padding:4px 8px;border-radius:20px;}
+  .att-row.present .status-pill{background:rgba(95,179,122,0.15);color:var(--good);}
+  .att-row.absent .status-pill{background:rgba(180,71,46,0.15);color:var(--danger);}
+
+  .testing-table input.score-input{width:82px;}
+
+  /* Report modal */
+  .report-emblem-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  .report-team-name{font-size:12px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:2px;}
+  .report-player-name{font-size:24px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin:0 0 12px;}
+  .report-summary{display:flex;gap:22px;flex-wrap:wrap;font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+  .report-summary strong.good{color:var(--good);} .report-summary strong.warn{color:var(--warn);} .report-summary strong.bad{color:var(--danger);}
+  .report-tests{margin-top:18px;display:flex;flex-direction:column;gap:18px;}
+  .report-test-block{border:1px solid var(--border);border-radius:4px;padding:14px 16px;background:var(--panel2);}
+  .report-test-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+  .report-test-name{font-weight:800;letter-spacing:.5px;font-size:14px;color:var(--cream);}
+  .report-test-dir{font-size:10px;color:var(--muted);letter-spacing:1px;}
+  .report-test-stats{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;}
+  .report-test-stats strong{color:var(--cream);}
+  .report-test-stats strong.good{color:var(--good);} .report-test-stats strong.bad{color:var(--danger);}
+  .chart-svg{display:block;margin-top:4px;}
+  .chart-single{font-size:12px;color:var(--muted);padding:10px 0;}
+
+  @media print{
+    body *{visibility:hidden;}
+    .report-printable,.report-printable *{visibility:visible;}
+    .report-printable{position:absolute;left:0;top:0;width:100%;background:#fff;color:#000;padding:20px;}
+    .no-print{display:none !important;}
+    .report-test-block{border-color:#999;background:#f7f7f7;}
+  }
+
+  @media (max-width:640px){
+    .pb-wordmark{font-size:13px;letter-spacing:1px;}
+    .screen-title{font-size:18px;}
+    .modal-wide{width:92vw;}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "spi_tracker_v1";
+  var db = loadDB();
+  var view = { screen: "teams", modal: null };
+
+  // ---------- persistence ----------
+  function loadDB(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return { teams: [] };
+      var parsed = JSON.parse(raw);
+      if(!parsed || !Array.isArray(parsed.teams)) return { teams: [] };
+      return parsed;
+    }catch(e){
+      return { teams: [] };
+    }
+  }
+  function saveDB(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+    }catch(e){
+      alert("Could not save data: " + e.message);
+    }
+  }
+
+  // ---------- helpers ----------
+  function uid(){ return "id_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,9); }
+  function todayStr(){ var d = new Date(); var m = String(d.getMonth()+1).padStart(2,"0"); var day = String(d.getDate()).padStart(2,"0"); return d.getFullYear() + "-" + m + "-" + day; }
+  function round2(n){ return Math.round(n*100)/100; }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c];
+    });
+  }
+  function attPct(p, sessions){
+    if(!sessions) return null;
+    return Math.round((p.attendedDates.length/sessions)*100);
+  }
+  function lastReading(arr){
+    if(!arr || !arr.length) return null;
+    return arr.slice().sort(function(a,b){ return a.date.localeCompare(b.date); }).pop();
+  }
+
+  // ---------- svg emblem ----------
+  function svgEmblem(){
+    return '<svg viewBox="0 0 60 60" width="44" height="44" xmlns="http://www.w3.org/2000/svg">' +
+      '<circle cx="30" cy="30" r="27" fill="#15181C" stroke="#3E82AC" stroke-width="2.5"/>' +
+      '<circle cx="30" cy="30" r="21" fill="none" stroke="#3E82AC" stroke-width="1"/>' +
+      '<text x="30" y="36" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="15" fill="#3E82AC">SPI</text>' +
+      '</svg>';
+  }
+  function renderHeader(){
+    return '<header class="pb-header">' +
+      '<div class="pb-emblem">' + svgEmblem() + '</div>' +
+      '<div class="pb-wordmark-wrap">' +
+        '<div class="pb-wordmark">STRENGTH &amp; PERFORMANCE INSTITUTE</div>' +
+        '<div class="pb-sub">CLEARWATER, FL</div>' +
+      '</div>' +
+    '</header>';
+  }
+
+  // ---------- render dispatch ----------
+  var appEl = document.getElementById("app");
+
+  function render(){
+    if(view.screen === "roster"){
+      appEl.innerHTML = renderRosterScreen(view.teamId);
+    } else {
+      appEl.innerHTML = renderTeamsScreen();
+    }
+  }
+
+  // ---------- screen 1: teams ----------
+  function renderTeamsScreen(){
+    var teamsHtml;
+    if(db.teams.length){
+      teamsHtml = db.teams.map(function(t){
+        var athletes = t.players.length, tests = t.tests.length, sessions = t.attendanceDates.length;
+        return '<div class="team-card" data-action="open-team" data-team="' + t.id + '">' +
+          '<button class="btn-icon danger" data-action="remove-team" data-team="' + t.id + '" title="Remove team">&times;</button>' +
+          '<div class="team-card-name">' + escapeHtml(t.name) + '</div>' +
+          '<div class="team-card-stats">' +
+            '<span>' + athletes + ' athlete' + (athletes===1?'':'s') + '</span>' +
+            '<span>' + tests + ' test' + (tests===1?'':'s') + '</span>' +
+            '<span>' + sessions + ' session' + (sessions===1?'':'s') + '</span>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    } else {
+      teamsHtml = '<div class="empty-state">No teams yet. Add your first team below.</div>';
+    }
+
+    return renderHeader() +
+      '<main class="screen teams-screen">' +
+        '<div class="screen-toolbar">' +
+          '<h2 class="screen-title">Teams</h2>' +
+          '<div class="toolbar-actions">' +
+            '<button class="btn btn-outline" data-action="backup">Backup</button>' +
+            '<button class="btn btn-outline" data-action="restore-trigger">Restore</button>' +
+            '<input type="file" id="restoreFile" accept="application/json" style="display:none">' +
+          '</div>' +
+        '</div>' +
+        '<div class="team-grid">' + teamsHtml + '</div>' +
+        '<div class="add-team-row">' +
+          '<input type="text" id="newTeamName" placeholder="New team name" class="input" maxlength="60">' +
+          '<button class="btn btn-primary" data-action="add-team">Add Team</button>' +
+        '</div>' +
+      '</main>';
+  }
+
+  // ---------- screen 2: roster ----------
+  function renderRosterScreen(teamId){
+    var team = null;
+    for(var i=0;i<db.teams.length;i++){ if(db.teams[i].id===teamId) team = db.teams[i]; }
+    if(!team){
+      view = { screen:"teams", modal:null };
+      return renderTeamsScreen();
+    }
+
+    var sessions = team.attendanceDates.length;
+    var totalSlots = team.players.length * sessions;
+    var totalAttended = team.players.reduce(function(s,p){ return s + p.attendedDates.length; }, 0);
+    var avgAtt = (sessions>0 && team.players.length>0) ? Math.round((totalAttended/totalSlots)*100) : null;
+
+    var testHeaders = team.tests.map(function(t){
+      return '<th class="test-col">' +
+        '<input type="text" class="test-name-input" data-action="noop" data-team="' + team.id + '" data-test="' + t.id + '" value="' + escapeHtml(t.name) + '">' +
+        '<div>' +
+          '<button class="dir-toggle" data-action="toggle-dir" data-team="' + team.id + '" data-test="' + t.id + '" title="Toggle higher/lower better">' + (t.higherBetter ? '&#9650; HIGH' : '&#9660; LOW') + '</button>' +
+          '<button class="btn-icon danger small" data-action="remove-test" data-team="' + team.id + '" data-test="' + t.id + '" title="Remove test">&times;</button>' +
+        '</div>' +
+      '</th>';
+    }).join('');
+
+    var rows;
+    if(team.players.length){
+      rows = team.players.map(function(p){
+        var pct = attPct(p, sessions);
+        var pctClass = pct===null ? '' : (pct>=80?'good':(pct>=60?'warn':'bad'));
+        var attCell = pct===null ? '&mdash;' : (pct + '% &middot; ' + p.attendedDates.length + '/' + sessions);
+        var testCells = team.tests.map(function(t){
+          var arr = p.scores[t.id] || [];
+          var latest = lastReading(arr);
+          var val = latest ? latest.value : '';
+          return '<td><input type="number" step="any" class="score-input" data-team="' + team.id + '" data-player="' + p.id + '" data-test="' + t.id + '" value="' + val + '" placeholder="&mdash;"></td>';
+        }).join('');
+        return '<tr>' +
+          '<td class="player-name-cell" data-action="open-report" data-team="' + team.id + '" data-player="' + p.id + '">' + escapeHtml(p.name) + '</td>' +
+          '<td class="att-cell ' + pctClass + '">' + attCell + '</td>' +
+          testCells +
+          '<td><button class="btn-icon danger" data-action="remove-player" data-team="' + team.id + '" data-player="' + p.id + '" title="Remove athlete">&times;</button></td>' +
+        '</tr>';
+      }).join('');
+    } else {
+      rows = '<tr><td colspan="' + (3+team.tests.length) + '" class="empty-state">No athletes yet.</td></tr>';
+    }
+
+    var avgClass = avgAtt===null ? '' : (avgAtt>=80?'good':(avgAtt>=60?'warn':'bad'));
+
+    return renderHeader() +
+      '<main class="screen roster-screen">' +
+        '<div class="screen-toolbar">' +
+          '<button class="btn btn-outline" data-action="back-to-teams">&larr; Teams</button>' +
+          '<h2 class="screen-title">' + escapeHtml(team.name) + '</h2>' +
+          '<div class="toolbar-actions">' +
+            '<button class="btn btn-outline" data-action="open-attendance-modal" data-team="' + team.id + '">Take Attendance</button>' +
+            '<button class="btn btn-outline" data-action="open-testing-modal" data-team="' + team.id + '">Testing Day</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="team-avg">Team avg attendance: <span class="' + avgClass + '">' + (avgAtt===null?'&mdash;':avgAtt+'%') + '</span> <span class="muted">(' + sessions + ' session' + (sessions===1?'':'s') + ' logged)</span></div>' +
+        '<div class="table-wrap"><table><thead><tr><th>Athlete</th><th>Attendance</th>' + testHeaders + '<th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+        '<div class="roster-controls">' +
+          '<div class="add-row">' +
+            '<input type="text" id="newPlayerName" class="input" placeholder="Athlete name" maxlength="60">' +
+            '<button class="btn btn-primary" data-action="add-player" data-team="' + team.id + '">Add Athlete</button>' +
+          '</div>' +
+          '<div class="add-row">' +
+            '<input type="text" id="newTestName" class="input" placeholder="Test name (e.g. Vertical Jump)" maxlength="40">' +
+            '<label class="checkbox-label"><input type="checkbox" id="newTestHigher" checked> Higher is better</label>' +
+            '<button class="btn btn-primary" data-action="add-test" data-team="' + team.id + '">Add Test</button>' +
+          '</div>' +
+        '</div>' +
+      '</main>' +
+      renderModal();
+  }
+
+  // ---------- modals ----------
+  function renderModal(){
+    if(!view.modal) return '';
+    if(view.modal.type === "attendance") return renderAttendanceModal();
+    if(view.modal.type === "testing") return renderTestingModal();
+    if(view.modal.type === "report") return renderReportModal();
+    return '';
+  }
+
+  function findTeam(id){
+    for(var i=0;i<db.teams.length;i++){ if(db.teams[i].id===id) return db.teams[i]; }
+    return null;
+  }
+
+  function renderAttendanceModal(){
+    var teamId = view.modal.teamId;
+    var team = findTeam(teamId);
+    var date = view.modal.date || todayStr();
+    view.modal.date = date;
+    if(!view.modal.present){
+      var existing = team.attendanceDates.indexOf(date) !== -1;
+      var present = {};
+      team.players.forEach(function(p){
+        present[p.id] = existing ? (p.attendedDates.indexOf(date) !== -1) : true;
+      });
+      view.modal.present = present;
+    }
+    var rows;
+    if(team.players.length){
+      rows = team.players.map(function(p){
+        var isPresent = view.modal.present[p.id];
+        return '<div class="att-row ' + (isPresent?'present':'absent') + '" data-action="toggle-present" data-player="' + p.id + '">' +
+          '<span>' + escapeHtml(p.name) + '</span>' +
+          '<span class="status-pill">' + (isPresent?'PRESENT':'ABSENT') + '</span>' +
+        '</div>';
+      }).join('');
+    } else {
+      rows = '<div class="empty-state">No athletes yet.</div>';
+    }
+    return '<div class="modal-overlay" data-action="close-modal-bg">' +
+      '<div class="modal" data-action="stop">' +
+        '<div class="modal-header"><h3>Take Attendance</h3><button class="btn-icon" data-action="close-modal">&times;</button></div>' +
+        '<div class="modal-body">' +
+          '<label class="field-label">Date</label>' +
+          '<input type="date" id="attDate" class="input" value="' + date + '">' +
+          '<div class="att-list">' + rows + '</div>' +
+        '</div>' +
+        '<div class="modal-footer"><button class="btn btn-primary" data-action="save-attendance">Save</button></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderTestingModal(){
+    var teamId = view.modal.teamId;
+    var team = findTeam(teamId);
+    var date = view.modal.date || todayStr();
+    view.modal.date = date;
+
+    if(!team.tests.length){
+      return '<div class="modal-overlay" data-action="close-modal-bg">' +
+        '<div class="modal" data-action="stop">' +
+          '<div class="modal-header"><h3>Testing Day</h3><button class="btn-icon" data-action="close-modal">&times;</button></div>' +
+          '<div class="modal-body"><div class="empty-state">Add a test first.</div></div>' +
+        '</div></div>';
+    }
+
+    var headerCells = team.tests.map(function(t){ return '<th>' + escapeHtml(t.name) + '</th>'; }).join('');
+    var rows;
+    if(team.players.length){
+      rows = team.players.map(function(p){
+        var cells = team.tests.map(function(t){
+          var arr = p.scores[t.id] || [];
+          var existing = null;
+          for(var i=0;i<arr.length;i++){ if(arr[i].date===date) existing = arr[i]; }
+          var val = existing ? existing.value : '';
+          return '<td><input type="number" step="any" class="score-input" data-player="' + p.id + '" data-test="' + t.id + '" value="' + val + '"></td>';
+        }).join('');
+        return '<tr><td class="player-name-cell">' + escapeHtml(p.name) + '</td>' + cells + '</tr>';
+      }).join('');
+    } else {
+      rows = '<tr><td colspan="' + (1+team.tests.length) + '" class="empty-state">No athletes yet.</td></tr>';
+    }
+
+    return '<div class="modal-overlay" data-action="close-modal-bg">' +
+      '<div class="modal modal-wide" data-action="stop">' +
+        '<div class="modal-header"><h3>Testing Day</h3><button class="btn-icon" data-action="close-modal">&times;</button></div>' +
+        '<div class="modal-body">' +
+          '<label class="field-label">Date</label>' +
+          '<input type="date" id="testDate" class="input" value="' + date + '">' +
+          '<div class="table-wrap"><table class="testing-table"><thead><tr><th>Athlete</th>' + headerCells + '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+        '</div>' +
+        '<div class="modal-footer"><button class="btn btn-primary" data-action="save-testing">Save Results</button></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function buildLineChart(arr){
+    if(arr.length < 2){
+      return '<div class="chart-single">Single reading: ' + round2(arr[0].value) + ' on ' + arr[0].date + '</div>';
+    }
+    var w=360,h=90,pad=26;
+    var vals = arr.map(function(r){ return r.value; });
+    var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+    var range = (max-min) || 1;
+    var stepX = (w-pad*2) / (arr.length-1);
+    var points = arr.map(function(r,i){
+      var x = pad + i*stepX;
+      var y = pad + (h-pad*2) * (1 - (r.value-min)/range);
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    }).join(' ');
+    var dots = arr.map(function(r,i){
+      var x = pad + i*stepX;
+      var y = pad + (h-pad*2) * (1 - (r.value-min)/range);
+      return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="3" fill="#3E82AC"><title>' + r.date + ': ' + round2(r.value) + '</title></circle>';
+    }).join('');
+    var first = arr[0], last = arr[arr.length-1];
+    return '<svg class="chart-svg" viewBox="0 0 ' + w + ' ' + h + '" width="100%" height="' + h + '">' +
+      '<polyline points="' + points + '" fill="none" stroke="#3E82AC" stroke-width="2"/>' +
+      dots +
+      '<text x="' + pad + '" y="' + (h-6) + '" font-size="9" fill="#9CA3AB">' + first.date + '</text>' +
+      '<text x="' + (w-pad) + '" y="' + (h-6) + '" font-size="9" fill="#9CA3AB" text-anchor="end">' + last.date + '</text>' +
+    '</svg>';
+  }
+
+  function renderReportModal(){
+    var teamId = view.modal.teamId, playerId = view.modal.playerId;
+    var team = findTeam(teamId);
+    var player = null;
+    for(var i=0;i<team.players.length;i++){ if(team.players[i].id===playerId) player = team.players[i]; }
+    if(!player){ view.modal = null; return ''; }
+
+    var sessions = team.attendanceDates.length;
+    var pct = attPct(player, sessions);
+
+    var attRanked = team.players.slice().sort(function(a,b){
+      var pa = attPct(a,sessions), pb = attPct(b,sessions);
+      return (pb===null?-1:pb) - (pa===null?-1:pa);
+    });
+    var attRank = 1;
+    for(var r=0;r<attRanked.length;r++){ if(attRanked[r].id===player.id){ attRank = r+1; break; } }
+
+    var testedTests = team.tests.filter(function(t){ return (player.scores[t.id]||[]).length>0; });
+    var untestedTests = team.tests.filter(function(t){ return !(player.scores[t.id]||[]).length; });
+
+    var testBlocks = testedTests.map(function(t){
+      var arr = (player.scores[t.id]||[]).slice().sort(function(a,b){ return a.date.localeCompare(b.date); });
+      var first = arr[0], latest = arr[arr.length-1];
+      var change = latest.value - first.value;
+      var improved = t.higherBetter ? change>0 : change<0;
+      var changeStr = arr.length>1 ? ((change>0?'+':'') + round2(change) + ' ' + (improved?'&#9650;':'&#9660;')) : '&mdash;';
+      var changeClass = arr.length>1 ? (improved?'good':'bad') : '';
+
+      var teamLatest = team.players.map(function(p){
+        var a = (p.scores[t.id]||[]).slice().sort(function(x,y){ return x.date.localeCompare(y.date); });
+        return a.length ? { id:p.id, val:a[a.length-1].value } : null;
+      }).filter(function(x){ return x; });
+      teamLatest.sort(function(a,b){ return t.higherBetter ? (b.val-a.val) : (a.val-b.val); });
+      var rank = 1;
+      for(var k=0;k<teamLatest.length;k++){ if(teamLatest[k].id===player.id){ rank = k+1; break; } }
+
+      return '<div class="report-test-block">' +
+        '<div class="report-test-head">' +
+          '<span class="report-test-name">' + escapeHtml(t.name) + '</span>' +
+          '<span class="report-test-dir">' + (t.higherBetter?'Higher is better':'Lower is better') + '</span>' +
+        '</div>' +
+        '<div class="report-test-stats">' +
+          '<span>Current: <strong>' + round2(latest.value) + '</strong></span>' +
+          '<span>Change: <strong class="' + changeClass + '">' + changeStr + '</strong></span>' +
+          '<span>Team rank: <strong>' + rank + '/' + teamLatest.length + '</strong></span>' +
+        '</div>' +
+        buildLineChart(arr) +
+      '</div>';
+    }).join('');
+
+    var untestedStr = untestedTests.length ? ('Not yet tested in: ' + untestedTests.map(function(t){return escapeHtml(t.name);}).join(', ')) : '';
+    var pctClass = pct===null ? '' : (pct>=80?'good':(pct>=60?'warn':'bad'));
+
+    return '<div class="modal-overlay" data-action="close-modal-bg">' +
+      '<div class="modal modal-wide report-modal" data-action="stop">' +
+        '<div class="modal-header no-print"><h3>Athlete Report</h3><button class="btn-icon" data-action="close-modal">&times;</button></div>' +
+        '<div class="modal-body report-printable">' +
+          '<div class="report-emblem-row">' + svgEmblem() + '<div>' +
+            '<div class="pb-wordmark small">STRENGTH &amp; PERFORMANCE INSTITUTE</div>' +
+            '<div class="report-team-name">' + escapeHtml(team.name) + '</div>' +
+          '</div></div>' +
+          '<h2 class="report-player-name">' + escapeHtml(player.name) + '</h2>' +
+          '<div class="report-summary">' +
+            '<span>Attendance: <strong class="' + pctClass + '">' + (pct===null?'&mdash;':pct+'%') + '</strong>' + (pct===null?'':(' (' + player.attendedDates.length + '/' + sessions + ', rank ' + attRank + '/' + team.players.length + ')')) + '</span>' +
+            '<span>Tested in ' + testedTests.length + ' of ' + team.tests.length + ' tracked tests</span>' +
+          '</div>' +
+          (untestedStr ? '<div class="muted small">' + untestedStr + '</div>' : '') +
+          '<div class="report-tests">' + (testBlocks || '<div class="empty-state">No test data yet.</div>') + '</div>' +
+        '</div>' +
+        '<div class="modal-footer no-print">' +
+          '<button class="btn btn-outline" data-action="print-report">Print</button>' +
+          '<button class="btn btn-primary" data-action="send-report">Send Report</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // ---------- actions ----------
+  function addTeam(){
+    var input = document.getElementById("newTeamName");
+    var name = input.value.trim();
+    if(!name) return;
+    db.teams.push({ id: uid(), name: name, attendanceDates: [], tests: [], players: [] });
+    saveDB();
+    render();
+  }
+  function addPlayer(teamId){
+    var input = document.getElementById("newPlayerName");
+    var name = input.value.trim();
+    if(!name) return;
+    var team = findTeam(teamId);
+    team.players.push({ id: uid(), name: name, attendedDates: [], scores: {} });
+    saveDB();
+    render();
+  }
+  function addTest(teamId){
+    var nameInput = document.getElementById("newTestName");
+    var higherInput = document.getElementById("newTestHigher");
+    var name = nameInput.value.trim();
+    if(!name) return;
+    var team = findTeam(teamId);
+    team.tests.push({ id: uid(), name: name, higherBetter: higherInput.checked });
+    saveDB();
+    render();
+  }
+  function handleScoreEdit(input){
+    var teamId = input.dataset.team, playerId = input.dataset.player, testId = input.dataset.test;
+    var team = findTeam(teamId);
+    var player = null;
+    for(var i=0;i<team.players.length;i++){ if(team.players[i].id===playerId) player = team.players[i]; }
+    if(!player) return;
+    var raw = input.value.trim();
+    if(raw === ""){ return; }
+    var val = parseFloat(raw);
+    if(isNaN(val)) return;
+    if(!player.scores[testId]) player.scores[testId] = [];
+    var arr = player.scores[testId];
+    var latest = lastReading(arr);
+    if(latest){
+      latest.value = val;
+    } else {
+      arr.push({ date: todayStr(), value: val });
+    }
+    saveDB();
+  }
+  function saveAttendance(){
+    var teamId = view.modal.teamId, date = view.modal.date, present = view.modal.present;
+    var team = findTeam(teamId);
+    if(team.attendanceDates.indexOf(date) === -1){
+      team.attendanceDates.push(date);
+      team.attendanceDates.sort();
+    }
+    team.players.forEach(function(p){
+      var isPresent = present[p.id];
+      var idx = p.attendedDates.indexOf(date);
+      if(isPresent && idx===-1) p.attendedDates.push(date);
+      if(!isPresent && idx!==-1) p.attendedDates.splice(idx,1);
+    });
+    saveDB();
+    view.modal = null;
+    render();
+  }
+  function saveTesting(){
+    var teamId = view.modal.teamId, date = view.modal.date;
+    var team = findTeam(teamId);
+    var inputs = document.querySelectorAll(".score-input[data-player]:not([data-team])");
+    inputs.forEach(function(inp){
+      var raw = inp.value.trim();
+      if(raw === "") return;
+      var val = parseFloat(raw);
+      if(isNaN(val)) return;
+      var player = null;
+      for(var i=0;i<team.players.length;i++){ if(team.players[i].id===inp.dataset.player) player = team.players[i]; }
+      if(!player) return;
+      var testId = inp.dataset.test;
+      if(!player.scores[testId]) player.scores[testId] = [];
+      var arr = player.scores[testId];
+      var existing = null;
+      for(var j=0;j<arr.length;j++){ if(arr[j].date===date) existing = arr[j]; }
+      if(existing) existing.value = val;
+      else arr.push({ date: date, value: val });
+    });
+    saveDB();
+    view.modal = null;
+    render();
+  }
+  function sendReport(){
+    var teamId = view.modal.teamId, playerId = view.modal.playerId;
+    var team = findTeam(teamId);
+    var player = null;
+    for(var i=0;i<team.players.length;i++){ if(team.players[i].id===playerId) player = team.players[i]; }
+    if(!player) return;
+    var sessions = team.attendanceDates.length;
+    var pct = attPct(player, sessions);
+    var body = "STRENGTH & PERFORMANCE INSTITUTE - ATHLETE REPORT\n";
+    body += "Team: " + team.name + "\n";
+    body += "Athlete: " + player.name + "\n";
+    body += "Attendance: " + (pct===null?"—":pct+"%") + " (" + player.attendedDates.length + "/" + sessions + ")\n\n";
+    team.tests.forEach(function(t){
+      var arr = (player.scores[t.id]||[]).slice().sort(function(a,b){ return a.date.localeCompare(b.date); });
+      if(!arr.length) return;
+      var first = arr[0], latest = arr[arr.length-1];
+      var change = latest.value - first.value;
+      body += t.name + " (" + (t.higherBetter?"higher better":"lower better") + "): current " + round2(latest.value) + ", change " + (change>0?"+":"") + round2(change) + "\n";
+    });
+    var subject = encodeURIComponent(player.name + " - Training Report");
+    var bodyEnc = encodeURIComponent(body);
+    window.location.href = "mailto:?subject=" + subject + "&body=" + bodyEnc;
+  }
+  function doBackup(){
+    var blob = new Blob([JSON.stringify(db, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "spi_backup_" + todayStr() + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  }
+  function handleRestoreFile(input){
+    var file = input.files[0];
+    if(!file) return;
+    if(!confirm("Restore will REPLACE all current data with the backup file. Continue?")){
+      input.value = "";
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        var parsed = JSON.parse(e.target.result);
+        if(!parsed || !Array.isArray(parsed.teams)) throw new Error("Invalid file format");
+        db = parsed;
+        saveDB();
+        view = { screen: "teams", modal: null };
+        render();
+        alert("Restore complete.");
+      }catch(err){
+        alert("Could not restore: " + err.message);
+      }
+      input.value = "";
+    };
+    reader.readAsText(file);
+  }
+
+  // ---------- event delegation ----------
+  appEl.addEventListener("click", function(e){
+    var el = e.target.closest("[data-action]");
+    if(!el) return;
+    var action = el.dataset.action;
+    switch(action){
+      case "noop":
+      case "stop":
+        break;
+      case "open-team":
+        view = { screen:"roster", teamId: el.dataset.team, modal:null };
+        render();
+        break;
+      case "back-to-teams":
+        view = { screen:"teams", modal:null };
+        render();
+        break;
+      case "remove-team":
+        if(confirm("Remove this team and all its data? This cannot be undone.")){
+          db.teams = db.teams.filter(function(t){ return t.id !== el.dataset.team; });
+          saveDB(); render();
+        }
+        break;
+      case "add-team": addTeam(); break;
+      case "backup": doBackup(); break;
+      case "restore-trigger": document.getElementById("restoreFile").click(); break;
+      case "add-player": addPlayer(el.dataset.team); break;
+      case "remove-player":
+        if(confirm("Remove this athlete and all their data?")){
+          var teamRP = findTeam(el.dataset.team);
+          teamRP.players = teamRP.players.filter(function(p){ return p.id !== el.dataset.player; });
+          saveDB(); render();
+        }
+        break;
+      case "add-test": addTest(el.dataset.team); break;
+      case "remove-test":
+        if(confirm("Remove this test and all recorded results for it?")){
+          var teamRT = findTeam(el.dataset.team);
+          teamRT.tests = teamRT.tests.filter(function(t){ return t.id !== el.dataset.test; });
+          teamRT.players.forEach(function(p){ delete p.scores[el.dataset.test]; });
+          saveDB(); render();
+        }
+        break;
+      case "toggle-dir":
+        var teamTD = findTeam(el.dataset.team);
+        var testTD = null;
+        for(var i=0;i<teamTD.tests.length;i++){ if(teamTD.tests[i].id===el.dataset.test) testTD = teamTD.tests[i]; }
+        if(testTD){ testTD.higherBetter = !testTD.higherBetter; saveDB(); render(); }
+        break;
+      case "open-attendance-modal":
+        view.modal = { type:"attendance", teamId: el.dataset.team, date:null, present:null };
+        render();
+        break;
+      case "open-testing-modal":
+        view.modal = { type:"testing", teamId: el.dataset.team, date:null };
+        render();
+        break;
+      case "open-report":
+        view.modal = { type:"report", teamId: el.dataset.team, playerId: el.dataset.player };
+        render();
+        break;
+      case "close-modal":
+      case "close-modal-bg":
+        view.modal = null;
+        render();
+        break;
+      case "toggle-present":
+        view.modal.present[el.dataset.player] = !view.modal.present[el.dataset.player];
+        render();
+        break;
+      case "save-attendance": saveAttendance(); break;
+      case "save-testing": saveTesting(); break;
+      case "print-report": window.print(); break;
+      case "send-report": sendReport(); break;
+    }
+  });
+
+  appEl.addEventListener("change", function(e){
+    var t = e.target;
+    if(t.id === "restoreFile"){ handleRestoreFile(t); return; }
+    if(t.matches && t.matches(".score-input[data-team]")){ handleScoreEdit(t); render(); return; }
+    if(t.id === "attDate"){
+      view.modal.date = t.value;
+      view.modal.present = null;
+      render();
+      return;
+    }
+    if(t.id === "testDate"){
+      view.modal.date = t.value;
+      render();
+      return;
+    }
+    if(t.matches && t.matches(".test-name-input")){
+      var team = findTeam(t.dataset.team);
+      var test = null;
+      for(var i=0;i<team.tests.length;i++){ if(team.tests[i].id===t.dataset.test) test = team.tests[i]; }
+      if(test){
+        var val = t.value.trim();
+        if(val) test.name = val;
+        saveDB();
+      }
+      return;
+    }
+  });
+
+  appEl.addEventListener("keydown", function(e){
+    if(e.key === "Enter" && e.target.matches && e.target.matches("input[type=number], input[type=text]")){
+      e.target.blur();
+    }
+  });
+
+  // ---------- init ----------
+  render();
+})();
+</script>
+</body>
+</html>
