@@ -511,12 +511,15 @@
     '</svg>';
   }
 
-  function renderReportModal(){
-    var teamId = view.modal.teamId, playerId = view.modal.playerId;
+  // Build a self-contained snapshot of one athlete's report: everything the
+  // report view needs to render, with no further lookups into `db`. This is
+  // what gets shown in the live modal AND what gets encoded into share links.
+  function buildReportPayload(teamId, playerId){
     var team = findTeam(teamId);
+    if(!team) return null;
     var player = null;
     for(var i=0;i<team.players.length;i++){ if(team.players[i].id===playerId) player = team.players[i]; }
-    if(!player){ view.modal = null; return ''; }
+    if(!player) return null;
 
     var sessions = team.attendanceDates.length;
     var pct = attPct(player, sessions);
@@ -531,14 +534,8 @@
     var testedTests = team.tests.filter(function(t){ return (player.scores[t.id]||[]).length>0; });
     var untestedTests = team.tests.filter(function(t){ return !(player.scores[t.id]||[]).length; });
 
-    var testBlocks = testedTests.map(function(t){
+    var tests = testedTests.map(function(t){
       var arr = (player.scores[t.id]||[]).slice().sort(function(a,b){ return a.date.localeCompare(b.date); });
-      var first = arr[0], latest = arr[arr.length-1];
-      var change = latest.value - first.value;
-      var improved = t.higherBetter ? change>0 : change<0;
-      var changeStr = arr.length>1 ? ((change>0?'+':'') + round2(change) + ' ' + (improved?'&#9650;':'&#9660;')) : '&mdash;';
-      var changeClass = arr.length>1 ? (improved?'good':'bad') : '';
-
       var teamLatest = team.players.map(function(p){
         var a = (p.scores[t.id]||[]).slice().sort(function(x,y){ return x.date.localeCompare(y.date); });
         return a.length ? { id:p.id, val:a[a.length-1].value } : null;
@@ -546,46 +543,149 @@
       teamLatest.sort(function(a,b){ return t.higherBetter ? (b.val-a.val) : (a.val-b.val); });
       var rank = 1;
       for(var k=0;k<teamLatest.length;k++){ if(teamLatest[k].id===player.id){ rank = k+1; break; } }
+      return { name: t.name, higherBetter: t.higherBetter, readings: arr, rank: rank, rankTotal: teamLatest.length };
+    });
 
+    return {
+      team: team.name,
+      player: player.name,
+      sessions: sessions,
+      attended: player.attendedDates.length,
+      attPct: pct,
+      attRank: attRank,
+      attRankTotal: team.players.length,
+      tests: tests,
+      untested: untestedTests.map(function(t){ return t.name; })
+    };
+  }
+
+  function computeTestStat(t){
+    var arr = t.readings.slice().sort(function(a,b){ return a.date.localeCompare(b.date); });
+    var first = arr[0], latest = arr[arr.length-1];
+    var change = latest.value - first.value;
+    var improved = t.higherBetter ? change>0 : change<0;
+    var changeStr = arr.length>1 ? ((change>0?'+':'') + round2(change) + ' ' + (improved?'&#9650;':'&#9660;')) : '&mdash;';
+    var changeClass = arr.length>1 ? (improved?'good':'bad') : '';
+    return { arr: arr, current: round2(latest.value), rawChange: (arr.length>1 ? change : 0), changeStr: changeStr, changeClass: changeClass };
+  }
+
+  // Renders the report content itself (emblem, name, summary, test blocks) —
+  // shared by the in-app modal and the standalone shared-link page.
+  function renderReportBody(payload){
+    var pctClass = payload.attPct===null ? '' : (payload.attPct>=80?'good':(payload.attPct>=60?'warn':'bad'));
+    var testBlocks = payload.tests.map(function(t){
+      var stat = computeTestStat(t);
       return '<div class="report-test-block">' +
         '<div class="report-test-head">' +
           '<span class="report-test-name">' + escapeHtml(t.name) + '</span>' +
           '<span class="report-test-dir">' + (t.higherBetter?'Higher is better':'Lower is better') + '</span>' +
         '</div>' +
         '<div class="report-test-stats">' +
-          '<span>Current: <strong>' + round2(latest.value) + '</strong></span>' +
-          '<span>Change: <strong class="' + changeClass + '">' + changeStr + '</strong></span>' +
-          '<span>Team rank: <strong>' + rank + '/' + teamLatest.length + '</strong></span>' +
+          '<span>Current: <strong>' + stat.current + '</strong></span>' +
+          '<span>Change: <strong class="' + stat.changeClass + '">' + stat.changeStr + '</strong></span>' +
+          '<span>Team rank: <strong>' + t.rank + '/' + t.rankTotal + '</strong></span>' +
         '</div>' +
-        buildLineChart(arr) +
+        buildLineChart(stat.arr) +
       '</div>';
     }).join('');
+    var untestedStr = payload.untested.length ? ('Not yet tested in: ' + payload.untested.map(escapeHtml).join(', ')) : '';
+    var totalTests = payload.tests.length + payload.untested.length;
 
-    var untestedStr = untestedTests.length ? ('Not yet tested in: ' + untestedTests.map(function(t){return escapeHtml(t.name);}).join(', ')) : '';
-    var pctClass = pct===null ? '' : (pct>=80?'good':(pct>=60?'warn':'bad'));
+    return '<div class="report-emblem-row">' + svgEmblem() + '<div>' +
+        '<div class="pb-wordmark small">STRENGTH &amp; PERFORMANCE INSTITUTE</div>' +
+        '<div class="report-team-name">' + escapeHtml(payload.team) + '</div>' +
+      '</div></div>' +
+      '<h2 class="report-player-name">' + escapeHtml(payload.player) + '</h2>' +
+      '<div class="report-summary">' +
+        '<span>Attendance: <strong class="' + pctClass + '">' + (payload.attPct===null?'&mdash;':payload.attPct+'%') + '</strong>' + (payload.attPct===null?'':(' (' + payload.attended + '/' + payload.sessions + ', rank ' + payload.attRank + '/' + payload.attRankTotal + ')')) + '</span>' +
+        '<span>Tested in ' + payload.tests.length + ' of ' + totalTests + ' tracked tests</span>' +
+      '</div>' +
+      (untestedStr ? '<div class="muted small">' + untestedStr + '</div>' : '') +
+      '<div class="report-tests">' + (testBlocks || '<div class="empty-state">No test data yet.</div>') + '</div>';
+  }
 
+  function renderReportModal(){
+    var payload = buildReportPayload(view.modal.teamId, view.modal.playerId);
+    if(!payload){ view.modal = null; return ''; }
     return '<div class="modal-overlay" data-action="close-modal-bg">' +
       '<div class="modal modal-wide report-modal" data-action="stop">' +
         '<div class="modal-header no-print"><h3>Athlete Report</h3><button class="btn-icon" data-action="close-modal">&times;</button></div>' +
-        '<div class="modal-body report-printable">' +
-          '<div class="report-emblem-row">' + svgEmblem() + '<div>' +
-            '<div class="pb-wordmark small">STRENGTH &amp; PERFORMANCE INSTITUTE</div>' +
-            '<div class="report-team-name">' + escapeHtml(team.name) + '</div>' +
-          '</div></div>' +
-          '<h2 class="report-player-name">' + escapeHtml(player.name) + '</h2>' +
-          '<div class="report-summary">' +
-            '<span>Attendance: <strong class="' + pctClass + '">' + (pct===null?'&mdash;':pct+'%') + '</strong>' + (pct===null?'':(' (' + player.attendedDates.length + '/' + sessions + ', rank ' + attRank + '/' + team.players.length + ')')) + '</span>' +
-            '<span>Tested in ' + testedTests.length + ' of ' + team.tests.length + ' tracked tests</span>' +
-          '</div>' +
-          (untestedStr ? '<div class="muted small">' + untestedStr + '</div>' : '') +
-          '<div class="report-tests">' + (testBlocks || '<div class="empty-state">No test data yet.</div>') + '</div>' +
-        '</div>' +
+        '<div class="modal-body report-printable">' + renderReportBody(payload) + '</div>' +
         '<div class="modal-footer no-print">' +
           '<button class="btn btn-outline" data-action="print-report">Print</button>' +
+          '<button class="btn btn-outline" data-action="copy-report-link">Copy Link</button>' +
           '<button class="btn btn-primary" data-action="send-report">Send Report</button>' +
         '</div>' +
       '</div>' +
     '</div>';
+  }
+
+  // ---------- share links ----------
+  // Encodes a report payload into a URL-safe base64 string so a report can be
+  // opened read-only from a link, with no localStorage data required on the
+  // receiving end. Everything the report needs travels inside the link itself.
+  function b64EncodeUnicode(str){
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1){
+      return String.fromCharCode(parseInt(p1, 16));
+    }));
+  }
+  function b64DecodeUnicode(str){
+    return decodeURIComponent(atob(str).split('').map(function(c){
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+  }
+  function toUrlSafeB64(b64){
+    return b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+  function fromUrlSafeB64(s){
+    s = s.replace(/-/g,'+').replace(/_/g,'/');
+    while(s.length % 4) s += '=';
+    return s;
+  }
+  function copyToClipboard(text){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){
+        alert('Report link copied to clipboard.');
+      }, function(){
+        window.prompt('Copy this link:', text);
+      });
+    } else {
+      window.prompt('Copy this link:', text);
+    }
+  }
+  function copyReportLink(){
+    var payload = buildReportPayload(view.modal.teamId, view.modal.playerId);
+    if(!payload) return;
+    var encoded = toUrlSafeB64(b64EncodeUnicode(JSON.stringify(payload)));
+    var link = window.location.origin + window.location.pathname + '#share=' + encoded;
+    copyToClipboard(link);
+  }
+
+  // Standalone page shown when the app is opened via a #share= link — a
+  // read-only view of one athlete's report, no team data or localStorage needed.
+  function renderSharedReportPage(payload){
+    return renderHeader() +
+      '<main class="screen shared-report-screen">' +
+        '<div class="screen-toolbar no-print">' +
+          '<h2 class="screen-title">Shared Report</h2>' +
+          '<div class="toolbar-actions">' +
+            '<button class="btn btn-outline" data-action="print-report">Print</button>' +
+            '<button class="btn btn-outline" data-action="open-tracker">Open Tracker</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="report-printable">' + renderReportBody(payload) + '</div>' +
+      '</main>';
+  }
+  function tryRenderSharedView(){
+    var hash = window.location.hash;
+    if(hash.indexOf('#share=') !== 0) return false;
+    try{
+      var payload = JSON.parse(b64DecodeUnicode(fromUrlSafeB64(hash.slice(7))));
+      appEl.innerHTML = renderSharedReportPage(payload);
+    }catch(e){
+      appEl.innerHTML = renderHeader() + '<main class="screen"><div class="empty-state">This report link is invalid or corrupted.</div></main>';
+    }
+    return true;
   }
 
   // ---------- actions ----------
@@ -678,25 +778,17 @@
     render();
   }
   function sendReport(){
-    var teamId = view.modal.teamId, playerId = view.modal.playerId;
-    var team = findTeam(teamId);
-    var player = null;
-    for(var i=0;i<team.players.length;i++){ if(team.players[i].id===playerId) player = team.players[i]; }
-    if(!player) return;
-    var sessions = team.attendanceDates.length;
-    var pct = attPct(player, sessions);
+    var payload = buildReportPayload(view.modal.teamId, view.modal.playerId);
+    if(!payload) return;
     var body = "STRENGTH & PERFORMANCE INSTITUTE - ATHLETE REPORT\n";
-    body += "Team: " + team.name + "\n";
-    body += "Athlete: " + player.name + "\n";
-    body += "Attendance: " + (pct===null?"—":pct+"%") + " (" + player.attendedDates.length + "/" + sessions + ")\n\n";
-    team.tests.forEach(function(t){
-      var arr = (player.scores[t.id]||[]).slice().sort(function(a,b){ return a.date.localeCompare(b.date); });
-      if(!arr.length) return;
-      var first = arr[0], latest = arr[arr.length-1];
-      var change = latest.value - first.value;
-      body += t.name + " (" + (t.higherBetter?"higher better":"lower better") + "): current " + round2(latest.value) + ", change " + (change>0?"+":"") + round2(change) + "\n";
+    body += "Team: " + payload.team + "\n";
+    body += "Athlete: " + payload.player + "\n";
+    body += "Attendance: " + (payload.attPct===null?"—":payload.attPct+"%") + " (" + payload.attended + "/" + payload.sessions + ")\n\n";
+    payload.tests.forEach(function(t){
+      var stat = computeTestStat(t);
+      body += t.name + " (" + (t.higherBetter?"higher better":"lower better") + "): current " + stat.current + ", change " + (stat.rawChange>0?"+":"") + round2(stat.rawChange) + "\n";
     });
-    var subject = encodeURIComponent(player.name + " - Training Report");
+    var subject = encodeURIComponent(payload.player + " - Training Report");
     var bodyEnc = encodeURIComponent(body);
     window.location.href = "mailto:?subject=" + subject + "&body=" + bodyEnc;
   }
@@ -810,6 +902,12 @@
       case "save-testing": saveTesting(); break;
       case "print-report": window.print(); break;
       case "send-report": sendReport(); break;
+      case "copy-report-link": copyReportLink(); break;
+      case "open-tracker":
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+        view = { screen:"teams", modal:null };
+        render();
+        break;
     }
   });
 
@@ -848,7 +946,9 @@
   });
 
   // ---------- init ----------
-  render();
+  if(!tryRenderSharedView()){
+    render();
+  }
 })();
 </script>
 </body>
