@@ -210,13 +210,70 @@
   function loadDB(){
     try{
       var raw = localStorage.getItem(STORAGE_KEY);
-      if(!raw) return { teams: [] };
+      if(!raw) return seedDemoDB();
       var parsed = JSON.parse(raw);
-      if(!parsed || !Array.isArray(parsed.teams)) return { teams: [] };
+      if(!parsed || !Array.isArray(parsed.teams) || !parsed.teams.length) return seedDemoDB();
       return parsed;
     }catch(e){
-      return { teams: [] };
+      return seedDemoDB();
     }
+  }
+
+  // Sample roster so a first-time open (or a client preview) has athletes,
+  // tests, 3 testing days, and attendance already filled in.
+  function seedDemoDB(){
+    var sessions = [
+      "2026-06-16","2026-06-18","2026-06-23","2026-06-25",
+      "2026-07-07","2026-07-09","2026-07-14","2026-07-16",
+      "2026-07-21","2026-07-23","2026-08-04","2026-08-11"
+    ];
+    var d1 = "2026-06-16", d2 = "2026-07-14", d3 = "2026-08-11";
+    var vj = "test_vj", rsi = "test_rsi", pa = "test_pa";
+    function readings(a, b, c){
+      return [{ date: d1, value: a }, { date: d2, value: b }, { date: d3, value: c }];
+    }
+    function attended(missed){
+      return sessions.filter(function(d){ return missed.indexOf(d) === -1; });
+    }
+    return {
+      teams: [{
+        id: "team_demo",
+        name: "Demo Team",
+        attendanceDates: sessions.slice(),
+        tests: [
+          { id: vj, name: "Vertical Jump", higherBetter: true },
+          { id: rsi, name: "RSI", higherBetter: true },
+          { id: pa, name: "Pro Agility", higherBetter: false }
+        ],
+        players: [
+          {
+            id: "p_marcus", name: "Marcus Hale",
+            attendedDates: attended([]),
+            scores: { test_vj: readings(28.5, 29.5, 31), test_rsi: readings(1.85, 1.98, 2.12), test_pa: readings(4.52, 4.41, 4.32) }
+          },
+          {
+            id: "p_jordan", name: "Jordan Ellis",
+            attendedDates: attended(["2026-07-16"]),
+            scores: { test_vj: readings(24, 25, 26.5), test_rsi: readings(1.55, 1.62, 1.70), test_pa: readings(4.78, 4.71, 4.63) }
+          },
+          {
+            id: "p_ava", name: "Ava Chen",
+            attendedDates: attended(["2026-06-25","2026-07-23"]),
+            scores: { test_vj: readings(26, 27.5, 28), test_rsi: readings(1.72, 1.80, 1.88), test_pa: readings(4.95, 4.82, 4.70) }
+          },
+          {
+            id: "p_diego", name: "Diego Ramirez",
+            attendedDates: attended(["2026-06-18","2026-07-09","2026-07-23"]),
+            scores: { test_vj: readings(22.5, 23, 24.5), test_rsi: readings(1.48, 1.55, 1.61), test_pa: readings(4.38, 4.35, 4.28) }
+          },
+          {
+            id: "p_taylor", name: "Taylor Brooks",
+            attendedDates: attended(["2026-06-18","2026-06-25","2026-07-09","2026-07-16","2026-07-23"]),
+            scores: { test_vj: readings(20, 21.5, 22), test_rsi: readings(1.32, 1.28, 1.40), test_pa: readings(5.12, 4.98, 4.90) }
+          }
+        ]
+      }]
+    };
   }
   function saveDB(){
     try{
@@ -947,6 +1004,7 @@
 
   // ---------- init ----------
   if(!tryRenderSharedView()){
+    saveDB();
     render();
   }
 })();
